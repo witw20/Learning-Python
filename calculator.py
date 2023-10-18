@@ -15,10 +15,13 @@ def main():
         elif exp == "/help":
             print("The program calculates the sum of numbers")
 
+        elif exp in variables:
+            print(variables[exp])
+
         elif "=" in exp:
             assign(variables, exp.split("="))
 
-        elif "**" in exp or r"//" in exp:
+        elif "**" in exp or r"//" in exp or exp.count('(') != exp.count(')'):
             print("Invalid expression")
 
         elif exp.isalpha() and exp not in variables:
@@ -47,21 +50,33 @@ def cal(variables: dict, exp: list) -> None:
     try:
         result = to_num(variables, exp[0])
         for i in range(1, len(exp), 2):
-            result += sign(exp[i]) * to_num(variables, exp[i + 1])
+            result += sign(el) * to_num(variables, exp[i + 1])
         if result is not None:
             print(result)
     except (SyntaxError, NameError):
         print('Invalid expression')
 
 def cal_postfix(variables: dict, exp: list) -> None:
+    op = {'+': lambda x, y: x + y, '-': lambda x, y: x - y,
+            '*': lambda x, y: x * y, r'/': lambda x, y: x // y,
+            '^': lambda x, y: x ** y}
+
+    num_stack = deque()
+
     try:
-        result = to_num(variables, exp[0])
-        for i in range(len(exp)):
-            # calculate
-        if result is not None:
-            print(result)
-    except (SyntaxError, NameError):
+        for el in exp:
+            # print(el, type(el))
+            if el not in op:
+                num_stack.append(el)
+            elif len(num_stack) > 1:
+                a = to_num(variables, num_stack.pop())
+                b = to_num(variables, num_stack.pop())
+                num_stack.append(str(op[el](b, a)))
+
+    except (SyntaxError, NameError, KeyError):
         print('Invalid expression')
+
+    print(int(num_stack[0]))
 
 def sign(signs: str) -> int:
     return -1 if signs.count("-") % 2 else 1
@@ -81,41 +96,40 @@ def parse_exp(text: str) -> list:
     text = re.sub('--', '+', text)
     text = re.sub('[\+]+', '+', text)
     text = re.sub(r'\+-', '-', text)
-    return [el.strip() for el in re.split(r'(\W)', text) if el.strip() != '']
+    pattern = r'([^a-zA-Z0-9-])'
+    # print([el.strip() for el in re.split(r'(\W)', text) if el.strip() != ''])
+    return [el.strip() for el in re.split(pattern, text) if el.strip() != '']
 
 def to_postfix(exp: list) -> list:
-    print(exp)
-    operators = {'+': 0, '-': 0, '*': 1, '//': 1, '^': 2, '(': 100, ')': 100}
+    operators = {'+': 0, '-': 0, '*': 1, r'/': 1, '^': 2, '(': 100, ')': 100}
+
     op_stack = deque()
     result = list()
 
     exp.append(')')
     op_stack.append('(')
 
-    for i in range(len(exp)):
-        # print(f"i: {i}")
+    for el in exp:
 
-        if exp[i] not in operators:
-            result.append(exp[i])
+        if el not in operators:
+            result.append(el)
 
         elif len(op_stack) == 0 or op_stack == deque(['(']):
-            op_stack.append(exp[i])
+            op_stack.append(el)
 
-        elif exp[i] == ')':
+        elif el == ')':
             while op_stack[-1] != '(':
                 result.append(op_stack.pop())
             op_stack.pop()
 
-        elif exp[i] == '(' or operators[exp[i]] > operators[op_stack[-1]]:
-            op_stack.append(exp[i])
+        elif el == '(' or operators[el] > operators[op_stack[-1]]:
+            op_stack.append(el)
 
-        elif operators[exp[i]] <= operators[op_stack[-1]]:
-            while op_stack[-1] != '(' or operators[exp[i]] > operators[op_stack[-1]]:
+        elif op_stack[-1] != '(' or operators[el] <= operators[op_stack[-1]]:
+            while operators[el] <= operators[op_stack[-1]] and op_stack[-1] != '(':
                 result.append(op_stack.pop())
-            op_stack.append(exp[i])
+            op_stack.append(el)
 
-        # print(op_stack)
-        # print(result)
 
     for _ in range(len(op_stack) - 1):
         result.append(op_stack.pop())
